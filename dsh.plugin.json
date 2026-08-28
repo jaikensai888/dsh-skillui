@@ -1,0 +1,16 @@
+{
+  "id": "dsh-external/dsh-skillui",
+  "version": "0.1.0",
+  "description": "Adds a sibling Skill UI tab for interactive Skill HTML pages.",
+  "main": "./lib/index.js",
+  "engines": {
+    "dsh": ">=0.0.1"
+  },
+  "contributes": {
+    "tools": [],
+    "skills": []
+  },
+  "client": {
+    "main": "./lib/client-registry.js"
+  }
+}
