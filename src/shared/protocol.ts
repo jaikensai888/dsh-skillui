@@ -21,6 +21,28 @@ export type SkillUiCommandRequest = {
   command: SkillUiCommand
 }
 
+/** A command emitted by any installed Skill UI view. */
+export type SkillUiCommandEnvelope = {
+  type: 'dsh-skillui:command'
+  identity: SkillUiIdentity
+  command: {
+    type: string
+    requestId: string
+    payload?: unknown
+  }
+}
+
+/** A host→client request to open the generic Skill UI tab. */
+export type SkillUiOpenRequest = {
+  id: string
+  sessionId: string
+  skillId: string
+  workflowId: string
+  title: string
+  entryPath: string
+  commands: readonly string[]
+}
+
 export type SkillUiState = {
   version: 1
   identity: SkillUiIdentity
@@ -55,6 +77,12 @@ export function isSkillUiCommand(value: unknown): value is SkillUiCommand {
 
 export function isSkillUiCommandRequest(value: unknown): value is SkillUiCommandRequest {
   return isRecord(value) && isSkillUiIdentity(value.identity) && isSkillUiCommand(value.command)
+}
+
+export function isSkillUiCommandEnvelope(value: unknown): value is SkillUiCommandEnvelope {
+  if (!isRecord(value) || value.type !== 'dsh-skillui:command' || !isSkillUiIdentity(value.identity)) return false
+  if (!isRecord(value.command)) return false
+  return isNonEmptyString(value.command.type) && isNonEmptyString(value.command.requestId)
 }
 
 export function identityKey(identity: SkillUiIdentity): string {

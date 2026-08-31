@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server'
 import {
   buildSkillUiUrl,
   resolveSkillUiIdentity,
@@ -57,5 +58,18 @@ describe('Skill UI client contract', () => {
       single: true,
     })
     expect(descriptor.component).toEqual(expect.any(Function))
+  })
+
+  it('exposes an HTML-oriented icon that honors the sidebar size', () => {
+    const descriptor = createSkillUiTabDescriptor()
+
+    expect(descriptor.icon).toEqual(expect.any(Function))
+    if (typeof descriptor.icon !== 'function') throw new Error('Skill UI icon is missing')
+
+    const markup = renderToStaticMarkup(descriptor.icon(18))
+
+    expect(markup).toContain('<svg')
+    expect(markup).toContain('width="18"')
+    expect(markup).toContain('height="18"')
   })
 })

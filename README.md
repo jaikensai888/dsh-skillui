@@ -22,7 +22,7 @@ dsh plugin --profile desktop add "github:jaikensai888/dsh-skillui#codex/bootstra
 dsh plugin --profile web add "github:jaikensai888/dsh-skillui#codex/bootstrap-skillui"
 ```
 
-安装完成后重启 DSH，在 `dsh-better-sidebar` 的 `+` 菜单中应能看到 `Skill UI`。点击后会打开本插件自带的 Demo 页面。
+安装完成后重启 DSH，在 `dsh-better-sidebar` 的 `+` 菜单中应能看到 `Skill UI`。点击后可以打开本插件自带的 Demo 页面；真实 Skill 则通过通用 `skillui_open` 工具按当前会话打开自己的 View。
 
 后续发布版本 tag 后，推荐改用固定版本安装，例如：
 
@@ -40,15 +40,16 @@ cd ~/.dsh
 dsh plugin --profile web remove dsh-skillui
 ```
 
-## 当前 MVP
+## 当前 Runtime
 
 - 不 fork、不修改 `DSH-better-sidebar`；
-- client 侧通过 `ctx.betterSidebar.registerTab(...)` 注册 `Skill UI`；
+- client 侧通过 `ctx.betterSidebar.registerTab(...)` 注册与 Files、Tasks、Terminal、Browser 同级的 `Skill UI`；
+- host 侧扫描 `npx skills add ... --all -g -y` 安装的 Skill 根目录，发现并校验 `skillui/manifest.json`；
+- `skillui_open` 绑定调用它的 DSH session，将已声明的 View 请求排队；客户端轮询后调用 `openTab(seed, { sessionId })`；
 - Tab 通过 `scope.sessionId` 和持久化的 `tab.meta` 生成 `sessionId / skillId / workflowId`；
-- host 侧通过 DSH 的 `webServer` 服务提供 Demo HTML 和 JSON bridge；
-- Demo 页面使用 sandbox iframe，确定性操作使用 `demo.increment` / `demo.reset` typed command；
-- Demo 状态以 session/workflow 为 key 的内存事件日志保存，并通过纯 reducer 回放。后续真实 Skill 可将同一 reducer 接到 DSH Session Projection；
-- 不包含真实招聘业务，也不调用模型。
+- View 只能通过受保护的 workspace JSON 和资源接口读取数据，不能拼接任意本地路径；
+- View 命令先校验身份和 manifest 白名单，再转换为当前会话的 queue prompt，由具体 Skill 执行业务逻辑；
+- Demo 页面仍保留，用于验证插件安装、Tab、iframe 和内存 reducer；不包含真实招聘业务。
 
 ## 目录
 
@@ -58,9 +59,9 @@ dsh-skillui/
 ├── cordis.patch.yml
 ├── src/
 │   ├── index.ts                 # host 插件入口与 HTTP route
-│   ├── host/                    # reducer、event log、HTTP bridge
-│   ├── client/                  # Skill UI Tab 与 iframe contract
-│   └── shared/                  # 跨 host/client 协议
+│   ├── host/                    # Skill registry、open queue、HTTP bridge、tool
+│   ├── client/                  # Tab、activation polling、command bridge
+│   └── shared/                  # manifest 与跨 host/client 协议
 ├── views/demo-review/index.html # Demo Skill UI
 └── docs/                        # 架构、设计规格、实施计划
 ```
@@ -74,6 +75,8 @@ pnpm typecheck
 pnpm build
 ```
 
+如果 DSH Desktop 正在使用本仓库的本地 `link:` 包，Windows 可能锁定 `lib` 文件并使 `pnpm build` 清理阶段报 `EPERM`；先完全退出 DSH Desktop，再执行构建。
+
 构建结果包括：
 
 - `lib/index.js`：host bundle；
@@ -85,21 +88,33 @@ pnpm build
 
 ## 接入真实 Skill 的边界
 
-真实招聘 Skill 不应修改本插件或 Sidebar。它应拥有自己的 host/client 逻辑，并在打开 UI 时使用：
+真实招聘 Skill 不应修改本插件或 Sidebar。它只需在自己的包中提供：
 
-```ts
-ctx.betterSidebar.openTab({
-  type: 'dsh-skillui:skill-ui',
-  title: '招聘流程',
-  meta: {
-    skillId: 'recruitment',
-    workflowId: 'candidate-screening-1',
-    entryPath: '/skillui/views/recruitment/index.html',
-  },
-}, { sessionId })
+```text
+skills/recruitment/
+├── SKILL.md
+├── skillui/manifest.json
+└── views/index.html
 ```
 
-招聘领域的 command、event、storage 和 projection 仍由招聘 Skill 自己拥有；`dsh-skillui` 只负责承载页面和传递 identity。
+进入招聘工作台时，入口 Skill 调用通用工具：
+
+```json
+{
+  "skillId": "recruitment",
+  "workflowId": "recruitment:当前流程ID"
+}
+```
+
+招聘领域的 command、storage、数据写入和业务判断仍由招聘 Skill 自己拥有；`dsh-skillui` 只负责发现声明、承载 HTML、绑定会话和转发交互。
+
+View 使用的稳定接口为：
+
+```text
+GET /skillui/api/data/:skillId/:declared-file?sessionId=...&skillId=...&workflowId=...
+GET /skillui/api/resource/:skillId/:allowed-path?sessionId=...&skillId=...&workflowId=...
+POST message to parent: dsh-skillui:command
+```
 
 ## 设计文档
 

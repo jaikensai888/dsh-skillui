@@ -1,10 +1,12 @@
 # dsh-skillui MVP 设计规格
 
+> 该文档记录 Demo MVP 的设计基线；实际 Skill 包接入和当前实现以 `README.md` 与 `docs/skill-ui-architecture.md` 为准。
+
 ## 背景
 
 目标是在 `DSH-better-sidebar` 的一级 Tab 中增加一个与 Files、Tasks、Terminal、Browser、Source Control 同级的 `Skill UI`。这个 Tab 不承载具体招聘业务，而是负责承载任意 Skill 提供的交互式 HTML，并把界面操作连接到 DSH 的会话、命令和状态投影。
 
-本阶段只实现一个可运行的 Demo Skill UI，验证宿主插件、Sidebar Tab、HTML 页面和会话级状态桥接之间的边界。招聘 Skill 在后续阶段作为独立 Skill Plugin 接入，不写入 `dsh-skillui` 的通用代码。
+本阶段实现一个可运行的 Demo Skill UI，并验证标准 Skill 包通过 manifest、`skillui_open` 和会话桥接接入；招聘 Skill 仍作为独立 Skill 包存在，不写入 `dsh-skillui` 的通用业务代码。
 
 ## 决策
 
@@ -31,7 +33,7 @@ sequenceDiagram
     participant P as Demo Projection
     participant E as Session Event Log
 
-    U->>S: 点击 Skill UI
+    U->>S: 点击 Skill UI（Demo）
     S->>T: 创建 Tab scope
     T->>H: GET demo HTML(sessionId, skillId, workflowId)
     T->>H: GET current state
@@ -60,20 +62,22 @@ sequenceDiagram
 
 ### Host
 
-- 注册 `/skillui/views/:skillId/index.html` 和 `/skillui/api/*` 路由；
-- 只暴露显式注册的 Skill UI 页面；
+- 扫描已安装 Skill 的 `skillui/manifest.json`，注册 `/skillui/views/:skillId/*` 和 `/skillui/api/*` 路由；
+- 只暴露 manifest 声明的 Skill UI 页面、workspace 文件和资源；
+- 注册 `skillui_open`，绑定调用它的 DSH session 并排队打开请求；
 - 校验 `sessionId`、`skillId`、`workflowId` 与 command 类型；
 - 将 Demo command 转换为事件，并通过纯 reducer 生成当前 projection；
-- 为没有真实 DSH session store 的本地测试提供确定性的内存 adapter，同时保留真实 session append / projection adapter 接口。当前 npm 的 `dsh-session-projection` 仍依赖未发布的 `dsh-type-meta`，因此 MVP 不把该包写死为安装依赖。
+- 将通用 UI command 转成当前会话的 queue prompt；Demo 仍使用确定性的内存 adapter。
 
 ### Skill UI 页面
 
 页面只依赖稳定的浏览器端协议：
 
 ```ts
-GET  /skillui/api/state?sessionId=...&skillId=...&workflowId=...
-POST /skillui/api/command
-     { identity, command: { type, requestId } }
+GET  /skillui/api/data/:skillId/:declared-file?sessionId=...&skillId=...&workflowId=...
+GET  /skillui/api/resource/:skillId/:allowed-path?sessionId=...&skillId=...&workflowId=...
+POST message to parent
+     { type: 'dsh-skillui:command', identity, command: { type, requestId, payload } }
 ```
 
 页面不直接访问 DSH 内部对象，也不发送自然语言消息来完成确定性操作。

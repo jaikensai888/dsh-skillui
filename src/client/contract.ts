@@ -4,6 +4,7 @@ export type SkillUiTabMeta = {
   skillId?: string
   workflowId?: string
   entryPath?: string
+  commands?: readonly string[]
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -27,6 +28,14 @@ export function resolveSkillUiEntryPath(meta?: unknown): string {
     return candidate.entryPath
   }
   return DEMO_HTML_PATH
+}
+
+export function resolveSkillUiCommands(meta?: unknown): readonly string[] {
+  const candidate = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : {}
+  if (!Array.isArray(candidate.commands)) return []
+  return candidate.commands.filter((command): command is string => (
+    typeof command === 'string' && command.trim().length > 0
+  ))
 }
 
 export function buildSkillUiUrl(identity: SkillUiIdentity, entryPath = DEMO_HTML_PATH): string {
