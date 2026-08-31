@@ -2,6 +2,44 @@
 
 独立的 DSH 插件：在 `dsh-better-sidebar` 中注册一个与 Files、Tasks、Terminal、Browser、Source Control 同级的 `Skill UI` Tab，用于承载具有交互界面的 Skill HTML。
 
+## 安装
+
+### 前置条件
+
+- 已安装 DSH Desktop 或 DSH CLI；
+- 目标 profile 已安装 `dsh-better-sidebar >=0.16.1`；
+- DSH 使用哪个 profile，就把 `--profile` 设置为哪个 profile。DSH Desktop 通常使用 `desktop`，`dsh web` 通常使用 `web`。
+
+当前仓库还没有发布版本 tag，因此先使用 GitHub 分支安装：
+
+```powershell
+cd ~/.dsh
+
+# DSH Desktop
+dsh plugin --profile desktop add "github:jaikensai888/dsh-skillui#codex/bootstrap-skillui"
+
+# 或 dsh web
+dsh plugin --profile web add "github:jaikensai888/dsh-skillui#codex/bootstrap-skillui"
+```
+
+安装完成后重启 DSH，在 `dsh-better-sidebar` 的 `+` 菜单中应能看到 `Skill UI`。点击后会打开本插件自带的 Demo 页面。
+
+后续发布版本 tag 后，推荐改用固定版本安装，例如：
+
+```powershell
+cd ~/.dsh
+dsh plugin --profile web add "github:jaikensai888/dsh-skillui#v0.1.0"
+```
+
+将 `web` 替换为 `desktop`，即可安装到 DSH Desktop profile。
+
+卸载插件：
+
+```powershell
+cd ~/.dsh
+dsh plugin --profile web remove dsh-skillui
+```
+
 ## 当前 MVP
 
 - 不 fork、不修改 `DSH-better-sidebar`；
