@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import {
   buildSkillUiUrl,
   resolveSkillUiIdentity,
+  skillUiMetaFromOpenRequest,
   type SkillUiTabMeta,
 } from '../src/client/contract.js'
 import { createSkillUiTabDescriptor, inject } from '../src/client/index.js'
@@ -27,6 +28,25 @@ describe('Skill UI client contract', () => {
       skillId: 'recruitment',
       workflowId: 'candidate-screening-1',
     })
+  })
+
+  it('normalizes the current Skill binding for a manually opened tab', () => {
+    expect(skillUiMetaFromOpenRequest({
+      id: 'request-1',
+      sessionId: 'session-2',
+      skillId: 'recruitment',
+      workflowId: 'candidate-screening-1',
+      title: '招聘工作台',
+      entryPath: '/skillui/views/recruitment/index.html',
+      commands: ['position.pause', 'candidate.markHandled'],
+    })).toEqual({
+      skillId: 'recruitment',
+      workflowId: 'candidate-screening-1',
+      entryPath: '/skillui/views/recruitment/index.html',
+      commands: ['position.pause', 'candidate.markHandled'],
+    })
+
+    expect(skillUiMetaFromOpenRequest({ skillId: 'recruitment' })).toBeUndefined()
   })
 
   it('encodes identity into the iframe entry URL', () => {

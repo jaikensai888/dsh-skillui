@@ -143,4 +143,47 @@ describe('generic Skill UI runtime', () => {
     expect(JSON.parse(first.body).requests).toHaveLength(1)
     expect(JSON.parse(second.body).requests).toEqual([])
   })
+
+  it('keeps the latest Skill binding available for a manually opened tab', async () => {
+    const opens = new SkillUiOpenRegistry()
+    opens.enqueue({
+      sessionId: identity.sessionId,
+      skillId: identity.skillId,
+      workflowId: identity.workflowId,
+      title: '招聘工作台',
+      entryPath: '/skillui/views/recruitment/index.html',
+      commands: ['position.pause'],
+    })
+
+    const consumed = await handleSkillUiRequestAsync(
+      request({
+        pathname: '/skillui/api/open',
+        query: new URLSearchParams({ sessionId: identity.sessionId }),
+      }),
+      undefined,
+      '<!doctype html>',
+      { openRegistry: opens },
+    )
+    expect(JSON.parse(consumed.body).requests).toHaveLength(1)
+
+    const current = await handleSkillUiRequestAsync(
+      request({
+        pathname: '/skillui/api/current',
+        query: new URLSearchParams({ sessionId: identity.sessionId }),
+      }),
+      undefined,
+      '<!doctype html>',
+      { openRegistry: opens },
+    )
+
+    expect(current.status).toBe(200)
+    expect(JSON.parse(current.body)).toMatchObject({
+      request: {
+        sessionId: identity.sessionId,
+        skillId: identity.skillId,
+        workflowId: identity.workflowId,
+        entryPath: '/skillui/views/recruitment/index.html',
+      },
+    })
+  })
 })

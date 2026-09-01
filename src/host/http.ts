@@ -417,6 +417,13 @@ export async function handleSkillUiRequestAsync(
     return jsonResponse(200, { requests: options.openRegistry?.take(sessionId) ?? [] })
   }
 
+  if (request.pathname === `${SKILL_UI_API_PATH}/current`) {
+    if (request.method !== 'GET') return methodNotAllowed('GET')
+    const sessionId = request.query.get('sessionId') ?? ''
+    if (sessionId.trim() === '') return jsonResponse(400, { error: 'invalid_session' })
+    return jsonResponse(200, { request: options.openRegistry?.current(sessionId) ?? null })
+  }
+
   const state = await handleGenericStateRequest(request, options)
   if (state !== undefined) return state
   const data = await handleGenericDataRequest(request, options)

@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { TabComponentProps } from 'dsh-better-sidebar/client/service'
 import {
   buildSkillUiUrl,
+  skillUiMetaFromTabMeta,
+  skillUiMetaFromOpenRequest,
   resolveSkillUiCommands,
   resolveSkillUiEntryPath,
   resolveSkillUiIdentity,
   skillUiFrameMessage,
+  type SkillUiTabMeta,
 } from './contract.js'
 import {
   isSkillUiCommandEnvelope,
@@ -37,12 +40,50 @@ type SkillUiCommandResultMessage = {
 
 export function SkillUiTab({ ctx, scope, tab, visible }: TabComponentProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const explicitMeta = useMemo(() => skillUiMetaFromTabMeta(tab.meta), [tab.meta])
+  const [discovered, setDiscovered] = useState<{ sessionId: string; meta: SkillUiTabMeta }>()
+
+  useEffect(() => {
+    if (explicitMeta !== undefined) {
+      setDiscovered(undefined)
+      return
+    }
+
+    let cancelled = false
+    setDiscovered(undefined)
+    void fetch(`/skillui/api/current?sessionId=${encodeURIComponent(scope.sessionId)}`, {
+      headers: { accept: 'application/json' },
+    })
+      .then(async (response) => {
+        if (!response.ok) return undefined
+        return await response.json() as { request?: unknown }
+      })
+      .then((payload) => {
+        if (cancelled) return
+        const request = payload?.request
+        if (
+          typeof request !== 'object'
+          || request === null
+          || (request as { sessionId?: unknown }).sessionId !== scope.sessionId
+        ) return
+        const meta = skillUiMetaFromOpenRequest(request)
+        if (meta !== undefined) setDiscovered({ sessionId: scope.sessionId, meta })
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [explicitMeta, scope.sessionId])
+
+  const effectiveMeta = explicitMeta
+    ?? (discovered?.sessionId === scope.sessionId ? discovered.meta : undefined)
   const identity = useMemo(
-    () => resolveSkillUiIdentity(scope.sessionId, tab.meta),
-    [scope.sessionId, tab.meta],
+    () => resolveSkillUiIdentity(scope.sessionId, effectiveMeta),
+    [effectiveMeta, scope.sessionId],
   )
-  const commands = useMemo(() => resolveSkillUiCommands(tab.meta), [tab.meta])
-  const entryPath = resolveSkillUiEntryPath(tab.meta)
+  const commands = useMemo(() => resolveSkillUiCommands(effectiveMeta), [effectiveMeta])
+  const entryPath = resolveSkillUiEntryPath(effectiveMeta)
   const src = buildSkillUiUrl(identity, entryPath)
 
   const sendVisibility = () => {

@@ -9,6 +9,7 @@ export type SkillUiOpenRequestInput = Omit<SkillUiOpenRequest, 'id'> & { id?: st
  */
 export class SkillUiOpenRegistry {
   private readonly pending = new Map<string, SkillUiOpenRequest[]>()
+  private readonly latest = new Map<string, SkillUiOpenRequest>()
 
   enqueue(input: SkillUiOpenRequestInput): SkillUiOpenRequest {
     const request: SkillUiOpenRequest = {
@@ -23,6 +24,7 @@ export class SkillUiOpenRegistry {
     if (duplicate >= 0) queue.splice(duplicate, 1)
     queue.push(request)
     this.pending.set(request.sessionId, queue)
+    this.latest.set(request.sessionId, request)
     return request
   }
 
@@ -32,11 +34,18 @@ export class SkillUiOpenRegistry {
     return requests
   }
 
+  /** Return the latest binding so a manually opened tab can resolve its Skill. */
+  current(sessionId: string): SkillUiOpenRequest | undefined {
+    return this.latest.get(sessionId)
+  }
+
   drainAll(): void {
     this.pending.clear()
+    this.latest.clear()
   }
 
   dispose(): void {
     this.pending.clear()
+    this.latest.clear()
   }
 }
