@@ -309,8 +309,7 @@ async function handleGenericStateRequest(
 
   const registry = options.registry
   if (registry === undefined) return undefined
-  await registry.waitForReady()
-  const definition = registry.get(identity.skillId)
+  const definition = await registry.resolve(identity.skillId)
   if (definition === undefined) return jsonResponse(404, { error: 'skill_not_found' })
 
   const projection = await readWorkspaceJson(definition, identity, options)
@@ -339,8 +338,7 @@ async function handleGenericDataRequest(
   if (identity === undefined || identity.skillId !== parts.skillId) return jsonResponse(400, { error: 'invalid_identity' })
   const registry = options.registry
   if (registry === undefined) return jsonResponse(404, { error: 'skill_not_found' })
-  await registry.waitForReady()
-  const definition = registry.get(parts.skillId)
+  const definition = await registry.resolve(parts.skillId)
   const state = definition?.manifest.state
   if (definition === undefined || state?.mode !== 'workspace-json' || state.files === undefined) {
     return jsonResponse(404, { error: 'skill_data_not_found' })
@@ -369,8 +367,7 @@ async function handleGenericResourceRequest(
   if (identity === undefined || identity.skillId !== parts.skillId) return jsonResponse(400, { error: 'invalid_identity' })
   const registry = options.registry
   if (registry === undefined) return jsonResponse(404, { error: 'skill_not_found' })
-  await registry.waitForReady()
-  const definition = registry.get(parts.skillId)
+  const definition = await registry.resolve(parts.skillId)
   const resources = definition?.manifest.resources
   if (definition === undefined || resources === undefined) return jsonResponse(404, { error: 'skill_resource_not_found' })
 

@@ -28,6 +28,53 @@ function request(input: Partial<SkillUiHttpRequest>): SkillUiHttpRequest {
 }
 
 describe('generic Skill UI runtime', () => {
+  it('rediscovers a Skill installed after the initial startup scan', async () => {
+    const skillRoot = await mkdtemp(join(tmpdir(), 'dsh-skillui-late-skill-'))
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'dsh-skillui-late-workspace-'))
+    temporaryDirectories.push(skillRoot, workspaceRoot)
+
+    const registry = new SkillUiRegistry([skillRoot])
+    await registry.refresh()
+
+    await mkdir(join(skillRoot, 'recruitment', 'skillui'), { recursive: true })
+    await mkdir(join(skillRoot, 'recruitment', 'views'), { recursive: true })
+    await mkdir(join(workspaceRoot, '.dsh', 'data', 'recruitment'), { recursive: true })
+    await writeFile(join(skillRoot, 'recruitment', 'skillui', 'manifest.json'), JSON.stringify({
+      schemaVersion: 1,
+      skillId: 'recruitment',
+      title: '招聘工作台',
+      entry: 'views/index.html',
+      state: {
+        mode: 'workspace-json',
+        root: '.dsh/data/recruitment',
+        files: { positions: 'positions.json' },
+      },
+    }))
+    await writeFile(join(skillRoot, 'recruitment', 'views', 'index.html'), '<h1>招聘 View</h1>')
+    await writeFile(join(workspaceRoot, '.dsh', 'data', 'recruitment', 'positions.json'), '[{"id":"p-1"}]')
+
+    const view = await handleSkillUiRequestAsync(
+      request({ pathname: '/skillui/views/recruitment/index.html' }),
+      undefined,
+      '<!doctype html>',
+      { registry },
+    )
+    expect(view.status).toBe(200)
+    expect(view.body).toContain('招聘 View')
+
+    const state = await handleSkillUiRequestAsync(
+      request({
+        pathname: '/skillui/api/state',
+        query: new URLSearchParams(identity),
+      }),
+      undefined,
+      '<!doctype html>',
+      { registry, resolveSessionCwd: () => workspaceRoot },
+    )
+    expect(state.status).toBe(200)
+    expect(JSON.parse(state.body)).toMatchObject({ data: { positions: [{ id: 'p-1' }] } })
+  })
+
   it('serves an installed Skill view and its workspace projection', async () => {
     const skillRoot = await mkdtemp(join(tmpdir(), 'dsh-skillui-skill-'))
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'dsh-skillui-workspace-'))

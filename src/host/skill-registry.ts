@@ -79,13 +79,29 @@ export class SkillUiRegistry {
     return this.definitions.get(skillId)
   }
 
+  /**
+   * Resolve a Skill definition, retrying discovery after a cache miss.
+   *
+   * Skill packages can be installed while DSH is already running. The first
+   * startup scan may therefore legitimately miss a package; callers that
+   * need a concrete Skill should get one chance to discover it lazily.
+   */
+  async resolve(skillId: string): Promise<SkillUiDefinition | undefined> {
+    await this.waitForReady()
+    let definition = this.get(skillId)
+    if (definition === undefined) {
+      await this.refresh()
+      definition = this.get(skillId)
+    }
+    return definition
+  }
+
   list(): readonly SkillUiDefinition[] {
     return [...this.definitions.values()]
   }
 
   async readView(skillId: string, relativePath: string): Promise<SkillUiViewAsset | undefined> {
-    await this.waitForReady()
-    const definition = this.get(skillId)
+    const definition = await this.resolve(skillId)
     if (definition === undefined) return undefined
 
     const safePath = decodeRelativePath(relativePath)

@@ -30,6 +30,7 @@ export type SkillUiManifest = {
 }
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/
+const STATE_FILE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const COMMAND_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const MAX_PATH_LENGTH = 512
 
@@ -103,7 +104,7 @@ function parseState(value: unknown): SkillUiStateConfig | undefined {
     if (!isRecord(value.files)) return undefined
     const files: Record<string, string> = {}
     for (const [key, file] of Object.entries(value.files)) {
-      if (!ID_PATTERN.test(key)) return undefined
+      if (!STATE_FILE_KEY_PATTERN.test(key)) return undefined
       const normalized = normalizeSafeRelativePath(file)
       if (normalized === undefined) return undefined
       files[key] = normalized

@@ -14,6 +14,7 @@ describe('Skill UI manifest contract', () => {
         files: {
           positions: 'positions.json',
           candidates: 'candidates.json',
+          passiveState: 'passive-state.json',
         },
       },
       resources: {
@@ -24,7 +25,10 @@ describe('Skill UI manifest contract', () => {
     })).toMatchObject({
       skillId: 'recruitment',
       entry: 'views/index.html',
-      state: { mode: 'workspace-json' },
+      state: {
+        mode: 'workspace-json',
+        files: { passiveState: 'passive-state.json' },
+      },
     })
   })
 

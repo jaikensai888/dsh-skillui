@@ -114,14 +114,7 @@ export function registerSkillUiOpenTool(
       exec.signal.throwIfAborted()
       const sessionId = sessionIdOf(exec)
       const skillId = requiredString(args, 'skillId')
-      await registry.waitForReady()
-      let definition = registry.get(skillId)
-      if (definition === undefined) {
-        // Skills can be installed while DSH is running. Refresh only on a
-        // miss so the normal path remains a cheap in-memory lookup.
-        await registry.refresh()
-        definition = registry.get(skillId)
-      }
+      const definition = await registry.resolve(skillId)
       if (definition === undefined) throw new Error(`Skill UI manifest not found for "${skillId}"`)
 
       const workflowId = optionalString(args, 'workflowId') ?? `${skillId}:${sessionId}`
